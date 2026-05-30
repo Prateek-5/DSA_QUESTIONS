@@ -72,9 +72,15 @@ git config user.name "Your Name"; git config user.email "you@example.com"
    solution + status are committed and pushed.
 5. Want another approach? `Ctrl+Alt+N` → a fresh `approach-N.cpp` to edit; submit it the same way.
 
-Status (To Do / In Progress / Done) is stored in `data/status.json` and embedded into
-`launchpad.html`; the launchpad auto-refreshes every few seconds so it stays current (toggle with the
-**auto-refresh** checkbox).
+### Status & flags
+- **Status** (To Do / In Progress / Done) — set automatically (Open → In Progress, Accepted submit →
+  Done) **or change it yourself** via the dropdown in the launchpad (e.g. to mark problems you solved
+  before this setup). An Accepted submit always wins and clears a manual override.
+- **Flag** column — set manually per problem: **⏭ Skip** or **🔁 Revisit** (independent of status, so a
+  *Done* problem can still be flagged *Revisit*). Filter by status or flag from the toolbar.
+- Manual launchpad edits are saved in your **browser** (localStorage) and survive the auto-refresh.
+  To persist a status into the repo/git (so a fresh clone sees it), run:
+  `python3 tooling/set-status.py <id> done` (e.g. `001`). The auto pipeline already does this on submit.
 
 ---
 

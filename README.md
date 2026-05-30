@@ -36,9 +36,11 @@ launchpad.html  ──click "Open"──►  vscode://prateek.dsa-bank/open?...
 - **Open in VS Code** — `launchpad.html` has an *Open ▸* button per problem. Clicking it scaffolds
   `DSA/Solutions/<topic>/<NNN-slug>/` (LeetCode description → `README.md`, starter → `solution.cpp`),
   opens both side-by-side, and flips its status to **In Progress**. Existing problems just re-open.
-- **Live status tracking** — each problem shows **To Do / In Progress / Done** in the launchpad, with
-  a progress bar and a status filter. Status is stored in `data/status.json`, set automatically
-  (Open → In Progress, Accepted submit → Done), and the page auto-refreshes to stay current.
+- **Live status tracking** — each problem shows **To Do / In Progress / Done**, with a progress bar and
+  filters. Set automatically (Open → In Progress, Accepted submit → Done) or **edit the dropdown
+  manually**. Plus a manual **Flag** column (**⏭ Skip / 🔁 Revisit**) independent of status. Status is
+  stored in `data/status.json`; manual launchpad edits persist in the browser (use `set-status.py` to
+  persist into git). The page auto-refreshes to stay current.
 - **Submit & Push** — one command submits to LeetCode (updates your profile) and, only if
   **Accepted**, marks Done, commits + pushes here. No redundant re-solve on the website.
 - **Multiple approaches** — `Ctrl+Alt+N` spins up `approach-2.cpp`, `approach-3.cpp`… in the same

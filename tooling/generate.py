@@ -170,6 +170,15 @@ STATUS_META = {  # key -> (label, text-color, bg)
 }
 
 
+STATUS_OPTS = [("todo", "To Do"), ("open", "In Progress"), ("done", "Done")]
+FLAG_OPTS = [("", "—"), ("skipped", "⏭ Skip"), ("revisit", "🔁 Revisit")]
+
+
+def _opts(pairs, cur):
+    return "".join(
+        f'<option value="{v}"{" selected" if v == cur else ""}>{l}</option>' for v, l in pairs)
+
+
 def vscode_uri(r):
     from urllib.parse import urlencode
     q = urlencode({"id": r["id"], "topic": r["topicDir"], "slug": r["fileSlug"],
@@ -213,7 +222,8 @@ a.btn{{display:inline-block;padding:5px 10px;border-radius:7px;text-decoration:n
 a.open{{background:#0B3D5C;color:#fff}} a.open:hover{{background:#0a3350}}
 a.lc{{color:#1565C0}} a.card{{color:#627D88}}
 .est{{font-size:10px;color:#94A3B8}}
-tr[data-status="done"] td:nth-child(n+3):nth-child(-n+6){{opacity:.6}}
+.ssel,.fsel{{border:1px solid #cbd5e1;border-radius:7px;padding:3px 6px;font-size:11px;font-weight:700;cursor:pointer}}
+tr[data-status="done"] .pcell{{opacity:.55;text-decoration:line-through}}
 .hide{{display:none}}
 </style></head><body>
 <header><h1>🚀 DSA Launchpad — {n} problems</h1>
@@ -231,6 +241,8 @@ VS Code with the <b>dsa-bank</b> extension installed.</p></header>
     <option>Must-Do</option><option>Optional</option></select>
   <select id="sf" onchange="flt()"><option value="">Any status</option>
     <option value="todo">To Do</option><option value="open">In Progress</option><option value="done">Done</option></select>
+  <select id="ff" onchange="flt()"><option value="">Any flag</option>
+    <option value="skipped">⏭ Skipped</option><option value="revisit">🔁 Revisit</option><option value="none">No flag</option></select>
   <span class="stat" id="cnt"></span>
   <div class="prog" title="solved"><i id="bar" style="width:{(done*100//n) if n else 0}%"></i></div>
   <span class="stat" id="done"></span>
@@ -238,7 +250,7 @@ VS Code with the <b>dsa-bank</b> extension installed.</p></header>
   <button onclick="location.reload()" title="refresh now" style="border:1px solid #B9CBD8;border-radius:8px;background:#fff;cursor:pointer;padding:6px 9px">↻</button>
 </div>
 <table id="t"><thead><tr>
-<th>#</th><th>Status</th><th>Stage</th><th>Topic</th><th>Pattern</th><th>Problem</th>
+<th>#</th><th>Status</th><th>Flag</th><th>Stage</th><th>Topic</th><th>Pattern</th><th>Problem</th>
 <th>Difficulty</th><th>Priority</th><th>Open</th><th>Links</th><th>Notes</th>
 </tr></thead><tbody>""")
     for r in rows:
@@ -246,7 +258,6 @@ VS Code with the <b>dsa-bank</b> extension installed.</p></header>
         est = '<span class="est">*</span>' if r["difficultyEst"] else ""
         prc = "must" if r["priority"] == "Must-Do" else "opt"
         emb = status.get(r["id"], "todo")
-        smeta = STATUS_META[emb]
         lc = (f'<a class="btn lc" href="{html.escape(r["leet"])}" target="_blank">LeetCode↗</a>'
               if r["kind"] == "leetcode" else
               (f'<a class="btn lc" href="{html.escape(r["leet"])}" target="_blank">GfG↗</a>'
@@ -256,11 +267,12 @@ VS Code with the <b>dsa-bank</b> extension installed.</p></header>
                                       r["difficulty"].lower(), r["priority"].lower(), r["stageName"].lower()]))
         parts.append(f"""<tr data-id="{r['id']}" data-emb="{emb}" data-status="{emb}" data-s="{html.escape(r['stageName'])}" data-d="{r['difficulty']}" data-p="{r['priority']}" data-b="{html.escape(blob)}">
 <td>{r['order']}</td>
-<td><span class="sbadge" style="color:{smeta[1]};background:{smeta[2]}">{smeta[0]}</span></td>
+<td><select class="ssel" data-id="{r['id']}" onchange="setStatus(this)">{_opts(STATUS_OPTS, emb)}</select></td>
+<td><select class="fsel" data-id="{r['id']}" onchange="setFlag(this)">{_opts(FLAG_OPTS, "")}</select></td>
 <td class="stage" style="color:{STAGE_BAR[r['stage']]}">{html.escape(r['stageName'])}</td>
 <td class="topic">{html.escape(r['topic'])}</td>
 <td class="pat">{html.escape(r['pattern'])}</td>
-<td><b>{html.escape(r['title'])}</b></td>
+<td class="pcell"><b>{html.escape(r['title'])}</b></td>
 <td class="diff" style="color:{dc}">{r['difficulty']}{est}</td>
 <td><span class="pill {prc}">{r['priority']}</span></td>
 <td><a class="btn open" href="{html.escape(vscode_uri(r))}" onclick="markOpen('{r['id']}')">Open ▸</a></td>
@@ -269,37 +281,50 @@ VS Code with the <b>dsa-bank</b> extension installed.</p></header>
 </tr>""")
     parts.append("""</tbody></table>
 <script>
-const META={todo:["To Do","#64748B","#EEF2F5"],open:["In Progress","#E65100","#FFF3E0"],done:["Done","#2E7D32","#E8F5E9"]};
-const SKEY='dsa-status', FKEY='dsa-filters';
-function lsGet(){try{return JSON.parse(localStorage.getItem(SKEY)||'{}')}catch(e){return {}}}
-function lsSet(o){localStorage.setItem(SKEY,JSON.stringify(o))}
-function eff(tr,ls){const id=tr.dataset.id,emb=tr.dataset.emb||'todo';
-  if(emb==='done'||ls[id]==='done')return 'done'; return ls[id]||emb;}
-function applyStatuses(){const ls=lsGet();let d=0;
-  document.querySelectorAll('#t tbody tr').forEach(tr=>{
-    const st=eff(tr,ls); tr.dataset.status=st; if(st==='done')d++;
-    const b=tr.querySelector('.sbadge'),m=META[st]; b.textContent=m[0];b.style.color=m[1];b.style.background=m[2];});
-  const n=document.querySelectorAll('#t tbody tr').length;
+const SMETA={todo:["#64748B","#EEF2F5"],open:["#E65100","#FFF3E0"],done:["#2E7D32","#E8F5E9"]};
+const FMETA={"":["#94A3B8","#ffffff"],skipped:["#64748B","#EEF2F5"],revisit:["#7C3AED","#F3E8FF"]};
+const SKEY='dsa-status',FLKEY='dsa-flags',FKEY='dsa-filters';
+function J(k){try{return JSON.parse(localStorage.getItem(k)||'{}')}catch(e){return {}}}
+function P(k,o){localStorage.setItem(k,JSON.stringify(o))}
+function color(sel,m){sel.style.color=m[0];sel.style.background=m[1];}
+function applyAll(){
+  const ls=J(SKEY),fl=J(FLKEY);let d=0,changed=false;
+  const rows=document.querySelectorAll('#t tbody tr');
+  rows.forEach(tr=>{
+    const id=tr.dataset.id,emb=tr.dataset.emb||'todo';
+    let st;
+    if(emb==='done'){st='done'; if(ls[id]){delete ls[id];changed=true;}}   // accepted submit wins, clears manual
+    else st=ls[id]||emb;
+    tr.dataset.status=st;
+    const ss=tr.querySelector('.ssel');ss.value=st;color(ss,SMETA[st]);
+    const f=fl[id]||'';const fs=tr.querySelector('.fsel');fs.value=f;color(fs,FMETA[f]);
+    tr.dataset.flag=f;
+    if(st==='done')d++;
+  });
+  if(changed)P(SKEY,ls);
+  const n=rows.length;
   document.getElementById('done').textContent=d+' / '+n+' done';
   document.getElementById('bar').style.width=(n?Math.round(d*100/n):0)+'%';
 }
-function markOpen(id){const ls=lsGet(); if(ls[id]!=='done'){ls[id]='open';lsSet(ls);} applyStatuses();}
+function setStatus(sel){const ls=J(SKEY);ls[sel.dataset.id]=sel.value;P(SKEY,ls);applyAll();flt();}
+function setFlag(sel){const fl=J(FLKEY);if(sel.value)fl[sel.dataset.id]=sel.value;else delete fl[sel.dataset.id];P(FLKEY,fl);applyAll();flt();}
+function markOpen(id){const ls=J(SKEY);if(ls[id]!=='done'){ls[id]='open';P(SKEY,ls);}applyAll();}
 const q=document.getElementById('q'),st=document.getElementById('st'),df=document.getElementById('df'),
-      pr=document.getElementById('pr'),sf=document.getElementById('sf');
+      pr=document.getElementById('pr'),sf=document.getElementById('sf'),ff=document.getElementById('ff');
 function flt(){const Q=q.value.toLowerCase();let n=0;
   document.querySelectorAll('#t tbody tr').forEach(tr=>{
+    const fok=!ff.value||(ff.value==='none'?!tr.dataset.flag:tr.dataset.flag===ff.value);
     const ok=(!Q||tr.dataset.b.includes(Q))&&(!st.value||tr.dataset.s===st.value)&&
       (!df.value||tr.dataset.d===df.value)&&(!pr.value||tr.dataset.p===pr.value)&&
-      (!sf.value||tr.dataset.status===sf.value);
+      (!sf.value||tr.dataset.status===sf.value)&&fok;
     tr.classList.toggle('hide',!ok); if(ok)n++;});
   document.getElementById('cnt').textContent=n+' shown';}
-function saveState(){localStorage.setItem(FKEY,JSON.stringify(
-  {q:q.value,st:st.value,df:df.value,pr:pr.value,sf:sf.value,y:window.scrollY}));}
-function restoreState(){try{const s=JSON.parse(localStorage.getItem(FKEY)||'{}');
-  q.value=s.q||'';st.value=s.st||'';df.value=s.df||'';pr.value=s.pr||'';sf.value=s.sf||'';
-  applyStatuses();flt(); if(s.y)window.scrollTo(0,s.y);}catch(e){applyStatuses();flt();}}
+function saveState(){P(FKEY,{q:q.value,st:st.value,df:df.value,pr:pr.value,sf:sf.value,ff:ff.value,y:window.scrollY});}
+function restoreState(){const s=J(FKEY);
+  q.value=s.q||'';st.value=s.st||'';df.value=s.df||'';pr.value=s.pr||'';sf.value=s.sf||'';ff.value=s.ff||'';
+  applyAll();flt(); if(s.y)window.scrollTo(0,s.y);}
 restoreState();
-// auto-refresh: re-read the file so extension/submit status changes appear; pause while typing
+// auto-refresh: re-read the file so extension/submit status changes appear; pause while editing
 const ar=document.getElementById('auto');
 setInterval(()=>{const a=document.activeElement;
   if(ar.checked && !(a&&(a.tagName==='INPUT'||a.tagName==='SELECT'))){saveState();location.reload();}},6000);
