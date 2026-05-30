@@ -12,6 +12,7 @@ FILE="$(realpath "$FILE")"
 FOLDER="$(dirname "$FILE")"
 NAME="$(basename "$FOLDER")"
 FNAME="$(basename "$FILE")"          # e.g. solution.cpp or approach-2.cpp
+ID="${NAME%%-*}"                     # e.g. 001
 ROOT="$(git -C "$FOLDER" rev-parse --show-toplevel 2>/dev/null)"
 if [[ -z "$ROOT" ]]; then echo "✘ not inside a git repo"; exit 1; fi
 
@@ -19,9 +20,13 @@ bold(){ printf "\033[1m%s\033[0m\n" "$1"; }
 green(){ printf "\033[32m%s\033[0m\n" "$1"; }
 red(){ printf "\033[31m%s\033[0m\n" "$1"; }
 
+mark_done(){ # update launchpad status (best-effort)
+  python3 "$ROOT/tooling/set-status.py" "$ID" done >/dev/null 2>&1 || true
+}
+
 commit_push(){ # $1 = commit message
   ( cd "$ROOT"
-    git add "$FOLDER"
+    git add "$FOLDER" "$ROOT/data/status.json" "$ROOT/launchpad.html" 2>/dev/null || git add "$FOLDER"
     if git diff --cached --quiet; then
       echo "• nothing new to commit";
     else
@@ -45,6 +50,7 @@ if grep -q "@lc app=leetcode" "$FILE"; then
   echo "$LOG"
   if echo "$LOG" | grep -qiE "accepted|✔ .* cases passed"; then
     green "✔ Accepted on LeetCode (profile updated)"
+    mark_done
     RUNTIME="$(echo "$LOG" | grep -oiE "[0-9]+ ms" | head -1)"
     commit_push "solve: ${NAME}/${FNAME} [Accepted${RUNTIME:+, $RUNTIME}]"
   else
@@ -54,5 +60,6 @@ if grep -q "@lc app=leetcode" "$FILE"; then
   fi
 else
   bold "→ non-LeetCode problem (GeeksforGeeks/misc): skipping submit, pushing solution."
+  mark_done
   commit_push "solve: ${NAME}/${FNAME}"
 fi

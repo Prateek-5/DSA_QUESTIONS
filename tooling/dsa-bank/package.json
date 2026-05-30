@@ -16,9 +16,36 @@
         "category": "DSA"
       },
       {
+        "command": "dsa-bank.test",
+        "title": "DSA: Test (LeetCode example cases)",
+        "category": "DSA"
+      },
+      {
+        "command": "dsa-bank.newApproach",
+        "title": "DSA: New Approach (copy current solution)",
+        "category": "DSA"
+      },
+      {
         "command": "dsa-bank.openLaunchpad",
         "title": "DSA: Open Launchpad",
         "category": "DSA"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "dsa-bank.submitPush",
+        "key": "ctrl+alt+s",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "dsa-bank.test",
+        "key": "ctrl+alt+r",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "dsa-bank.newApproach",
+        "key": "ctrl+alt+n",
+        "when": "editorTextFocus"
       }
     ],
     "configuration": {

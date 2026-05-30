@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import * as https from "https";
 import * as path from "path";
+import { execFile } from "child_process";
 
 const LANG_EXT: Record<string, string> = {
   cpp: "cpp", python3: "py", java: "java", javascript: "js",
@@ -16,7 +17,12 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.registerUriHandler({
       handleUri: (uri: vscode.Uri) => handleUri(uri).catch(showErr),
     }),
-    vscode.commands.registerCommand("dsa-bank.submitPush", submitPush),
+    vscode.commands.registerCommand("dsa-bank.submitPush", () =>
+      runScriptOnActiveFile("lc-submit.sh", "DSA Submit & Push")),
+    vscode.commands.registerCommand("dsa-bank.test", () =>
+      runScriptOnActiveFile("lc-test.sh", "DSA Test")),
+    vscode.commands.registerCommand("dsa-bank.newApproach", () =>
+      runScriptOnActiveFile("new-approach.sh", "DSA New Approach")),
     vscode.commands.registerCommand("dsa-bank.openLaunchpad", openLaunchpad),
   );
   console.log("dsa-bank activated");
@@ -174,26 +180,35 @@ async function handleUri(uri: vscode.Uri) {
   await vscode.commands.executeCommand("markdown.showPreviewToSide", readme).then(undefined, () => {});
   const doc = await vscode.workspace.openTextDocument(sol);
   await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.One, preview: false });
+
+  // mark this problem "In Progress" in the launchpad
+  setStatus(root.fsPath, p.id, "open");
+
   vscode.window.setStatusBarMessage(
     fresh ? `DSA Bank: scaffolded ${p.id}-${p.slug}` : `DSA Bank: opened ${p.id}-${p.slug}`,
     4000,
   );
 }
 
-async function submitPush() {
+function setStatus(root: string, id: string, status: string) {
+  execFile("python3", [path.join(root, "tooling", "set-status.py"), id, status], (err) => {
+    if (err) console.log(`dsa-bank: set-status failed: ${err.message}`);
+  });
+}
+
+async function runScriptOnActiveFile(script: string, termName: string) {
   const ed = vscode.window.activeTextEditor;
   if (!ed) {
     throw new Error("Open a solution file first.");
   }
-  const file = ed.document.uri.fsPath;
-  const root = repoRoot().fsPath;
-  const script = path.join(root, "tooling", "lc-submit.sh");
   await ed.document.save();
+  const file = ed.document.uri.fsPath;
+  const scriptPath = path.join(repoRoot().fsPath, "tooling", script);
   const term =
-    vscode.window.terminals.find((t) => t.name === "DSA Submit & Push") ??
-    vscode.window.createTerminal("DSA Submit & Push");
+    vscode.window.terminals.find((t) => t.name === termName) ??
+    vscode.window.createTerminal(termName);
   term.show();
-  term.sendText(`bash "${script}" "${file}"`);
+  term.sendText(`bash "${scriptPath}" "${file}"`);
 }
 
 async function openLaunchpad() {
