@@ -8,6 +8,14 @@
       "args": ["${workspaceFolder}/tooling/lc-submit.sh", "${file}"],
       "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
       "problemMatcher": []
+    },
+    {
+      "label": "DSA: Test",
+      "type": "shell",
+      "command": "bash",
+      "args": ["${workspaceFolder}/tooling/lc-test.sh", "${file}"],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "problemMatcher": []
     }
   ]
 }
