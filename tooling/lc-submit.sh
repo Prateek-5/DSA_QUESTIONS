@@ -53,11 +53,16 @@ if grep -q "@lc app=leetcode" "$FILE"; then
     mark_done
     RUNTIME="$(echo "$LOG" | grep -oiE "[0-9]+ ms" | head -1)"
     commit_push "solve: ${NAME}/${FNAME} [Accepted${RUNTIME:+, $RUNTIME}]"
-  else
-    red "✘ Not accepted — NOT pushing. Fix and re-run."
-    echo "  (tip: run a quick test first with the LeetCode extension, or 'leetcode test \"$FILE\"')"
-    exit 1
-  fi
+  elif echo "$LOG" | grep -qiE "code=(499|403|401)|session expired|please ?login|not ?login|login first"; then
+      red "✘ LeetCode session expired or invalid — this is NOT a code problem."
+      echo "  Re-login, then resubmit:  leetcode user -c"
+      echo "  (paste:  csrftoken=<CSRF>; LEETCODE_SESSION=<SESSION>  from leetcode.com → F12 → Cookies)"
+      exit 2
+    else
+      red "✘ Not accepted (Wrong Answer / TLE / Runtime / Compile) — NOT pushing. Fix and re-run."
+      echo "  (tip: dry-run first — 'leetcode test \"$FILE\"' or Ctrl+Alt+R)"
+      exit 1
+    fi
 else
   bold "→ non-LeetCode problem (GeeksforGeeks/misc): skipping submit, pushing solution."
   mark_done
